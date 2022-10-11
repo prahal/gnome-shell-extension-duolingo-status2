@@ -1,4 +1,5 @@
 const Lang = imports.lang;
+const GLib = imports.gi.GLib;
 const Soup = imports.gi.Soup;
 const Main = imports.ui.main;
 const ExtensionUtils = imports.misc.extensionUtils;
@@ -39,57 +40,128 @@ var Duolingo = class Duolingo {
 			return this.raw_data;
 		}
 
-		var session = new Soup.SessionAsync();
-		session.user_agent = Me.metadata.uuid;
+		var session;
+		if (imports.gi.versions.Soup == '3.0') {
+			session = new Soup.Session();
+			session.set_user_agent(Me.metadata.uuid);
+		} else {
+			session = new Soup.SessionAsync();
+			session.user_agent = Me.metadata.uuid;
+		}
 
 		var url = Constants.URL_DUOLINGO_LOGIN;
 		if (Settings.get_boolean(Constants.SETTING_SHOW_ICON_IN_NOTIFICATION_TRAY)) {
 			url = url.replace(Constants.LABEL_DUOLINGO, Constants.LABEL_DUOLINGO_WITH_WWW_PREFIX);
 		}
 		var params = {'login': this.login, 'password': this.password};
-		var message = Soup.form_request_new_from_hash('POST', url, params);
-		message.request_headers.append('Connection', 'keep-alive');
-		session.queue_message(message, Lang.bind(this, function(session, response) {
-			var data = JSON.parse(response.response_body.data);
-			if (!data) {
-				callback(_("Cannot connect to Duolingo servers - check your connection."));
-				return;
-			}
-			if (data['failure'] != null) {
-				global.log(data['message'] + '. Error: ' + data['failure']);
-				callback(_("Authentication failed."));
-				return;
-			}
-
-			var cookies = Soup.cookies_from_response(response);
-			var url = Constants.URL_DUOLINGO_USERS + this.login;
-			if (Settings.get_boolean(Constants.SETTING_SHOW_ICON_IN_NOTIFICATION_TRAY)) {
-				url = url.replace(Constants.LABEL_DUOLINGO, Constants.LABEL_DUOLINGO_WITH_WWW_PREFIX);
-			}
-			var msg = Soup.Message.new('GET', url);
-			Soup.cookies_to_request(cookies, msg);
-			session.queue_message(msg, Lang.bind(this, function(session, response) {
-				if (response.status_code == 200) {
-					try {
-						this.raw_data = JSON.parse(response.response_body.data);
-					} catch (err) {
-						global.log(err);
-						callback(_("The user couldn't be found."));
-					}
-					callback();
-				} else {
-					this.timeouts--;
-					if (this.timeouts == 0) {
-						callback(_("The server couldn't be reached."));
-					} else {
-						Mainloop.timeout_add(TIME_OUT_DURATION, Lang.bind(this, function() {
-							this.get_raw_data(callback);
-						}));
-					}
+		var message;
+		if (imports.gi.versions.Soup == '3.0') {
+			message = Soup.Message.new_from_encoded_form('POST', url,
+				Soup.form_encode_hash(params));
+			message.get_request_headers().append('Connection', 'keep-alive');
+			session.send_and_read_async(message, GLib.PRIORITY_DEFAULT, null,
+				Lang.bind(this, function(session, result) {
+				let response;
+				let bytes;
+				try {
+					bytes = session.send_and_read_finish(result);
+				} catch (error) {
+					global.log(error);
+					callback(_("Cannot connect to Duolingo servers - check your connection."));
+					return;
 				}
-			}));
-		}));
+				let decoder = new TextDecoder('utf-8');
+				let body = decoder.decode(bytes.get_data());
+				var data = JSON.parse(body);
+				if (!data) {
+					callback(_("Cannot connect to Duolingo servers - check your connection."));
+					return;
+				}
+				if (data['failure'] != null) {
+					global.log(data['message'] + '. Error: ' + data['failure']);
+					callback(_("Authentication failed."));
+					return;
+				}
 
+				response = session.get_async_result_message(result);
+				var cookies = Soup.cookies_from_response(response);
+
+				var url = Constants.URL_DUOLINGO_USERS + this.login;
+				if (Settings.get_boolean(Constants.SETTING_SHOW_ICON_IN_NOTIFICATION_TRAY)) {
+					url = url.replace(Constants.LABEL_DUOLINGO, Constants.LABEL_DUOLINGO_WITH_WWW_PREFIX);
+				}
+				var msg = Soup.Message.new('GET', url);
+				Soup.cookies_to_request(cookies, msg);
+				session.send_and_read_async(msg, GLib.PRIORITY_DEFAULT, null,
+					Lang.bind(this, function(session, result) {
+					response = session.get_async_result_message(result);
+					if (response.get_status() == 200) {
+						try {
+							let bytes = session.send_and_read_finish(result);
+							let decoder = new TextDecoder('utf-8');
+							let body = decoder.decode(bytes.get_data());
+							this.raw_data = JSON.parse(body);
+						} catch (err) {
+							global.log(err);
+							callback(_("The user couldn't be found."));
+						}
+						callback();
+					} else {
+						this.timeouts--;
+						if (this.timeouts == 0) {
+							callback(_("The server couldn't be reached."));
+						} else {
+							Mainloop.timeout_add(TIME_OUT_DURATION, Lang.bind(this, function() {
+								this.get_raw_data(callback);
+							}));
+						}
+					}
+				}));
+			}));
+		} else {
+			message = Soup.form_request_new_from_hash('POST', url, params);
+			message.request_headers.append('Connection', 'keep-alive');
+			session.queue_message(message, Lang.bind(this, function(session, response) {
+				var data = JSON.parse(response.response_body.data);
+				if (!data) {
+					callback(_("Cannot connect to Duolingo servers - check your connection."));
+					return;
+				}
+				if (data['failure'] != null) {
+					global.log(data['message'] + '. Error: ' + data['failure']);
+					callback(_("Authentication failed."));
+					return;
+				}
+
+				var cookies = Soup.cookies_from_response(response);
+				var url = Constants.URL_DUOLINGO_USERS + this.login;
+				if (Settings.get_boolean(Constants.SETTING_SHOW_ICON_IN_NOTIFICATION_TRAY)) {
+					url = url.replace(Constants.LABEL_DUOLINGO, Constants.LABEL_DUOLINGO_WITH_WWW_PREFIX);
+				}
+				var msg = Soup.Message.new('GET', url);
+				Soup.cookies_to_request(cookies, msg);
+				session.queue_message(msg, Lang.bind(this, function(session, response) {
+					if (response.status_code == 200) {
+						try {
+							this.raw_data = JSON.parse(response.response_body.data);
+						} catch (err) {
+							global.log(err);
+							callback(_("The user couldn't be found."));
+						}
+						callback();
+					} else {
+						this.timeouts--;
+						if (this.timeouts == 0) {
+							callback(_("The server couldn't be reached."));
+						} else {
+							Mainloop.timeout_add(TIME_OUT_DURATION, Lang.bind(this, function() {
+								this.get_raw_data(callback);
+							}));
+						}
+					}
+				}));
+			}));
+		}
 		return this.raw_data;
 	}
 
@@ -209,36 +281,83 @@ var Duolingo = class Duolingo {
 
 
 	post_switch_language(new_language_code, callback, err) {
-		var session = new Soup.SessionAsync();
-		session.user_agent = Me.metadata.uuid;
+		var session;
+		if (imports.gi.versions.Soup == '3.0') {
+			session = new Soup.Session();
+			session.set_user_agent(Me.metadata.uuid);
+		} else {
+			session = new Soup.SessionAsync();
+			session.user_agent = Me.metadata.uuid;
+		}
 
 		var url = Constants.URL_DUOLINGO_LOGIN;
 		if (Settings.get_boolean(Constants.SETTING_SHOW_ICON_IN_NOTIFICATION_TRAY)) {
 			url = url.replace(Constants.LABEL_DUOLINGO, Constants.LABEL_DUOLINGO_WITH_WWW_PREFIX);
 		}
 		var params = {'login': this.login, 'password': this.password};
-		var message = Soup.form_request_new_from_hash('POST', url, params);
-		message.request_headers.append('Connection', 'keep-alive');
-		session.queue_message(message, Lang.bind(this, function(session, response) {
-			var data = JSON.parse(response.response_body.data);
+		var message;
+		if (imports.gi.versions.Soup == '3.0') {
+			message = Soup.Message.new_from_encoded_form('POST', url,
+				Soup.form_encode_hash(params));
+			message.get_request_headers().append('Connection', 'keep-alive');
+			session.send_and_read_async(message, GLib.PRIORITY_DEFAULT, null,
+				Lang.bind(this, function(session, result) {
+				let response;
+				let bytes;
+				try {
+					bytes = session.send_and_read_finish(result);
+				} catch (error) {
+					err(error);
+					return;
+				}
+				let decoder = new TextDecoder('utf-8');
+				let body = decoder.decode(bytes.get_data());
+				var data = JSON.parse(body);
 
-			if (data['failure'] != null) {
-				err(data['message'] + '. Error: ' + data['failure']);
-				return;
-			}
+				if (data['failure'] != null) {
+					err(data['message'] + '. Error: ' + data['failure']);
+					return;
+				}
 
-			var cookies = Soup.cookies_from_response(response);
-			var url_switch = Constants.URL_DUOLINGO_SWITCH_LANGUAGE;
-			if (Settings.get_boolean(Constants.SETTING_SHOW_ICON_IN_NOTIFICATION_TRAY)) {
-				url_switch = url_switch.replace(Constants.LABEL_DUOLINGO, Constants.LABEL_DUOLINGO_WITH_WWW_PREFIX);
-			}
-			var params_switch = {'learning_language': new_language_code};
-			var msg = Soup.form_request_new_from_hash('POST', url_switch, params_switch);
-			Soup.cookies_to_request(cookies, msg);
-			session.queue_message(msg, Lang.bind(this, function(session, response) {
-				callback();
+				response = session.get_async_result_message(result);
+				var cookies = Soup.cookies_from_response(response);
+				var url_switch = Constants.URL_DUOLINGO_SWITCH_LANGUAGE;
+				if (Settings.get_boolean(Constants.SETTING_SHOW_ICON_IN_NOTIFICATION_TRAY)) {
+					url_switch = url_switch.replace(Constants.LABEL_DUOLINGO, Constants.LABEL_DUOLINGO_WITH_WWW_PREFIX);
+				}
+				var params_switch = {'learning_language': new_language_code};
+				var msg = Soup.Message.new_from_encoded_form('POST', url_switch,
+					Soup.form_encode_hash(params_switch));
+				Soup.cookies_to_request(cookies, msg);
+				session.send_and_read_async(msg, GLib.PRIORITY_DEFAULT, null,
+					Lang.bind(this, function(session, result) {
+					callback();
+				}));
 			}));
-		}));
+		} else {
+			message = Soup.form_request_new_from_hash('POST', url, params);
+			message.request_headers.append('Connection', 'keep-alive');
+			session.queue_message(message, Lang.bind(this, function(session, response) {
+				var data = JSON.parse(response.response_body.data);
+
+				if (data['failure'] != null) {
+					err(data['message'] + '. Error: ' + data['failure']);
+					return;
+				}
+
+				var cookies = Soup.cookies_from_response(response);
+				var url_switch = Constants.URL_DUOLINGO_SWITCH_LANGUAGE;
+				if (Settings.get_boolean(Constants.SETTING_SHOW_ICON_IN_NOTIFICATION_TRAY)) {
+					url_switch = url_switch.replace(Constants.LABEL_DUOLINGO, Constants.LABEL_DUOLINGO_WITH_WWW_PREFIX);
+				}
+				var params_switch = {'learning_language': new_language_code};
+				var msg = Soup.form_request_new_from_hash('POST', url_switch, params_switch);
+				Soup.cookies_to_request(cookies, msg);
+				session.queue_message(msg, Lang.bind(this, function(session, response) {
+					callback();
+				}));
+			}));
+		}
 	}
 
 	get_learning_from_language() {
@@ -250,40 +369,95 @@ var Duolingo = class Duolingo {
 	}
 
 	buy_item(item_name, callback, err) {
-		var session = new Soup.SessionAsync();
-		session.user_agent = Me.metadata.uuid;
+		var session;
+		if (imports.gi.versions.Soup == '3.0') {
+			session = new Soup.Session();
+			session.set_user_agent(Me.metadata.uuid);
+		} else {
+			session = new Soup.SessionAsync();
+			session.user_agent = Me.metadata.uuid;
+		}
 
 		var url = Constants.URL_DUOLINGO_LOGIN;
 		if (Settings.get_boolean(Constants.SETTING_SHOW_ICON_IN_NOTIFICATION_TRAY)) {
 			url = url.replace(Constants.LABEL_DUOLINGO, Constants.LABEL_DUOLINGO_WITH_WWW_PREFIX);
 		}
 		var params = {'login': this.login, 'password': this.password};
-		var message = Soup.form_request_new_from_hash('POST', url, params);
-		message.request_headers.append('Connection', 'keep-alive');
-		session.queue_message(message, Lang.bind(this, function(session, response) {
-			var data = JSON.parse(response.response_body.data);
-			if (data['failure'] != null) {
-				err(data['message'] + '. Error: ' + data['failure']);
-				return;
-			}
+		var message;
+		if (imports.gi.versions.Soup == '3.0') {
+			message = Soup.Message.new_from_encoded_form('POST', url,
+				Soup.form_encode_hash(params));
+			message.get_request_headers().append('Connection', 'keep-alive');
+			session.send_and_read_async(message, GLib.PRIORITY_DEFAULT, null,
+				Lang.bind(this, function(session, result) {
+				let response;
+				let bytes;
+				try {
+					bytes = session.send_and_read_finish(result);
+				} catch (error) {
+					err(error);
+					return;
+				}
+				let decoder = new TextDecoder('utf-8');
+				let body = decoder.decode(bytes.get_data());
+				var data = JSON.parse(body);
+				if (data['failure'] != null) {
+					err(data['message'] + '. Error: ' + data['failure']);
+					return;
+				}
 
-			var cookies = Soup.cookies_from_response(response);
-			var url_buy_item = 'https://duolingo.com/store/purchase_item';
-			if (Settings.get_boolean(Constants.SETTING_SHOW_ICON_IN_NOTIFICATION_TRAY)) {
-				url_buy_item = url_buy_item.replace(Constants.LABEL_DUOLINGO, Constants.LABEL_DUOLINGO_WITH_WWW_PREFIX);
-			}
-			var learning_from_language = this.get_learning_from_language();
-			var params_buy_item = {'item_name': item_name, 'learning_language': learning_from_language};
-			var msg = Soup.form_request_new_from_hash('POST', url_buy_item, params_buy_item);
-			Soup.cookies_to_request(cookies, msg);
-			session.queue_message(msg, Lang.bind(this, function(session, response) {
-				global.log(response.status_code + ' - ' + response.reason_phrase);
-				global.log(response.response_body.data);
-				global.log(response.status_code + ' - ' + response.reason_phrase);
-				global.log(response.response_headers.get_one('content-type'));
-				callback();
+				response = session.get_async_result_message(result);
+				var cookies = Soup.cookies_from_response(response);
+				var url_buy_item = 'https://duolingo.com/store/purchase_item';
+				if (Settings.get_boolean(Constants.SETTING_SHOW_ICON_IN_NOTIFICATION_TRAY)) {
+					url_buy_item = url_buy_item.replace(Constants.LABEL_DUOLINGO, Constants.LABEL_DUOLINGO_WITH_WWW_PREFIX);
+				}
+				var learning_from_language = this.get_learning_from_language();
+				var params_buy_item = {'item_name': item_name, 'learning_language': learning_from_language};
+				var msg = Soup.Message.new_from_encoded_form('POST', url_buy_item,
+				Soup.form_encode_hash(params_buy_item));
+				Soup.cookies_to_request(cookies, msg);
+				session.send_and_read_async(msg, GLib.PRIORITY_DEFAULT, null,
+					Lang.bind(this, function(session, result) {
+					let	bytes = session.send_and_read_finish(result);
+					let decoder = new TextDecoder('utf-8');
+					let body = decoder.decode(bytes.get_data());
+					response = session.get_async_result_message(result);
+					global.log(response.get_status() + ' - ' + response.get_reason_phrase());
+					global.log(body);
+					global.log(response.get_status() + ' - ' + response.get_reason_phrase());
+					global.log(response.get_response_headers().get_one('content-type'));
+					callback();
+				}));
 			}));
-		}));
+		} else {
+			message = Soup.form_request_new_from_hash('POST', url, params);
+			message.request_headers.append('Connection', 'keep-alive');
+			session.queue_message(message, Lang.bind(this, function(session, response) {
+				var data = JSON.parse(response.response_body.data);
+				if (data['failure'] != null) {
+					err(data['message'] + '. Error: ' + data['failure']);
+					return;
+				}
+
+				var cookies = Soup.cookies_from_response(response);
+				var url_buy_item = 'https://duolingo.com/store/purchase_item';
+				if (Settings.get_boolean(Constants.SETTING_SHOW_ICON_IN_NOTIFICATION_TRAY)) {
+					url_buy_item = url_buy_item.replace(Constants.LABEL_DUOLINGO, Constants.LABEL_DUOLINGO_WITH_WWW_PREFIX);
+				}
+				var learning_from_language = this.get_learning_from_language();
+				var params_buy_item = {'item_name': item_name, 'learning_language': learning_from_language};
+				var msg = Soup.form_request_new_from_hash('POST', url_buy_item, params_buy_item);
+				Soup.cookies_to_request(cookies, msg);
+				session.queue_message(msg, Lang.bind(this, function(session, response) {
+					global.log(response.status_code + ' - ' + response.reason_phrase);
+					global.log(response.response_body.data);
+					global.log(response.status_code + ' - ' + response.reason_phrase);
+					global.log(response.response_headers.get_one('content-type'));
+					callback();
+				}));
+			}));
+		}
 	}
 
 };
