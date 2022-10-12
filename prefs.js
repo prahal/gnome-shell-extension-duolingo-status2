@@ -442,7 +442,7 @@ DuolingoStatusSettingsWidget.prototype = {
                                  'vscrollbar-policy': Gtk.PolicyType.AUTOMATIC,
                                  'hexpand': true, 'vexpand': true});
         scrollingWindow.set_child(this.vbox);
-        scrollingWindow.width_request = 400;
+        scrollingWindow.width_request = 700;
         scrollingWindow.show();
 		scrollingWindow.unparent();
 		scrollingWindow.connect('destroy', Lang.bind(this, function() {
