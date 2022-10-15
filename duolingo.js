@@ -50,9 +50,7 @@ var Duolingo = class Duolingo {
 		}
 
 		var url = Constants.URL_DUOLINGO_LOGIN;
-		if (Settings.get_boolean(Constants.SETTING_SHOW_ICON_IN_NOTIFICATION_TRAY)) {
-			url = url.replace(Constants.LABEL_DUOLINGO, Constants.LABEL_DUOLINGO_WITH_WWW_PREFIX);
-		}
+		url = url.replace(Constants.LABEL_DUOLINGO, Constants.LABEL_DUOLINGO_WITH_WWW_PREFIX);
 		var params = {'login': this.login, 'password': this.password};
 		var message;
 		if (imports.gi.versions.Soup == '3.0') {
@@ -291,9 +289,7 @@ var Duolingo = class Duolingo {
 		}
 
 		var url = Constants.URL_DUOLINGO_LOGIN;
-		if (Settings.get_boolean(Constants.SETTING_SHOW_ICON_IN_NOTIFICATION_TRAY)) {
-			url = url.replace(Constants.LABEL_DUOLINGO, Constants.LABEL_DUOLINGO_WITH_WWW_PREFIX);
-		}
+		url = url.replace(Constants.LABEL_DUOLINGO, Constants.LABEL_DUOLINGO_WITH_WWW_PREFIX);
 		var params = {'login': this.login, 'password': this.password};
 		var message;
 		if (imports.gi.versions.Soup == '3.0') {
@@ -379,9 +375,7 @@ var Duolingo = class Duolingo {
 		}
 
 		var url = Constants.URL_DUOLINGO_LOGIN;
-		if (Settings.get_boolean(Constants.SETTING_SHOW_ICON_IN_NOTIFICATION_TRAY)) {
-			url = url.replace(Constants.LABEL_DUOLINGO, Constants.LABEL_DUOLINGO_WITH_WWW_PREFIX);
-		}
+		url = url.replace(Constants.LABEL_DUOLINGO, Constants.LABEL_DUOLINGO_WITH_WWW_PREFIX);
 		var params = {'login': this.login, 'password': this.password};
 		var message;
 		if (imports.gi.versions.Soup == '3.0') {
