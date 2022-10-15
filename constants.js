@@ -51,3 +51,5 @@ var URL_DUOLINGO_USERS = 'https://duolingo.com/users/';
 
 var EVENT_PREFERENCES = 'preferences';
 var EVENT_REFRESH = 'refresh';
+
+var GRAB_PREFS_HANDLER_INTERVAL_TIMEOUT = 20000;
