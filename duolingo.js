@@ -235,6 +235,10 @@ var Duolingo = class Duolingo {
 		return this.get_raw_data().rupees;
 	}
 
+	get_gems() {
+		return this.get_raw_data().tracking_properties.gems;
+	}
+
 	get_streak() {
 		return this.get_raw_data().site_streak;
 	}

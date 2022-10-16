@@ -132,6 +132,22 @@ DuolingoStatusSettingsWidget.prototype = {
 		this._grid.attach(display_lingots_switch, 1, row_index, 1, 1);
 		row_index++;
 
+		/* Display gems switch */
+		var display_gems_label = new Gtk.Label({
+			label: _('Force display of gems when double or nothing is already displayed'),
+			hexpand: true,
+			halign: Gtk.Align.START
+		});
+		var display_gems_switch = new Gtk.Switch({
+			active: Settings.get_boolean(Constants.SETTING_SHOW_GEMS),
+			halign: Gtk.Align.END
+		});
+		display_gems_switch.connect('notify::active', function() {
+			Settings.set_boolean(Constants.SETTING_SHOW_GEMS, display_gems_switch.active);
+		});
+		this._grid.attach(display_gems_label, 0, row_index, 1, 1);
+		this._grid.attach(display_gems_switch, 1, row_index, 1, 1);
+
 		stack.add_titled(this._grid, "content", _("Content"));
 
 		/***************************************

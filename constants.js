@@ -14,6 +14,7 @@ var SETTING_PASSWORD = 'password';
 var SETTING_OPENING_BROWSER_COMMAND = 'opening-browser-command';
 var SETTING_SHOW_ICON_IN_NOTIFICATION_TRAY = 'show-icon-in-notification-tray';
 var SETTING_SHOW_LINGOTS = 'show-lingots';
+var SETTING_SHOW_GEMS = 'show-gems';
 var SETTING_USE_DEFAULT_BROWSER = 'use-default-browser';
 var SETTING_USERNAME = 'username';
 
@@ -24,6 +25,7 @@ var ICON_FLAG_PATH = Me.path + '/icons/flags/';
 var ICON_FLAG_SIZE = 16;
 var ICON_ICE_CUBE = Me.path + '/icons/ice_cube.png';
 var ICON_LINGOTS = Me.path + '/icons/ruby.png';
+var ICON_GEMS = Me.path + '/icons/gem.png';
 
 var LABEL_DUOLINGO = 'duolingo';
 var LABEL_DUOLINGO_WITH_WWW_PREFIX = 'www.duolingo';
@@ -40,6 +42,7 @@ var LANGUAGE_CURRENT_LANGUAGE = 'current_learning';
 var STYLE_DOUBLE_OR_NOTHING_LABEL = 'double_or_nothing_label';
 var STYLE_DUOLINGO_LINK = 'duolingo_link';
 var STYLE_LINGOTS_LABEL = 'lingots_label';
+var STYLE_GEMS_LABEL = 'gems_label';
 var STYLE_STREAK_FROZEN = 'streak-frozen';
 var STYLE_STREAK_NOT_FROZEN = 'streak-not-frozen';
 

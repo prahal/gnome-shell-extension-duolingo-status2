@@ -55,6 +55,10 @@
     	<default>true</default>
     </key>
 
+    <key type="b" name="show-gems">
+    	<default>true</default>
+    </key>
+
     <key type="b" name="show-double-or-nothing">
     	<default>true</default>
     </key>

@@ -99,6 +99,7 @@ var DuolingoMenuButton = GObject.registerClass(class DuolingoMenuButton extends 
     		this.menu.addMenuItem(this.profile_menu);
     		this._set_todays_improvement();
     		this._display_lingots();
+    		this._display_gems();
             this._display_double_or_nothing();
 
     		/* display language menus */
@@ -204,7 +205,24 @@ var DuolingoMenuButton = GObject.registerClass(class DuolingoMenuButton extends 
         }
 	}
 
-    _display_double_or_nothing() {
+	_display_gems() {
+		if(Settings.get_boolean(Constants.SETTING_SHOW_GEMS)) {
+			var gems = this.duolingo.get_gems();
+			var gicon = Gio.icon_new_for_string(Constants.ICON_GEMS);
+			var gems_icon = new St.Icon({
+					gicon: gicon,
+					icon_size: icon_size,
+					y_align: Clutter.ActorAlign.CENTER});
+			var gems_label = new St.Label({
+					y_align: Clutter.ActorAlign.CENTER,
+					text: Utils.formatThousandNumber(gems.toString())});
+			gems_label.add_style_class_name(Constants.STYLE_GEMS_LABEL);
+			this.profile_menu.add(gems_icon);
+			this.profile_menu.add(gems_label);
+		}
+	}
+
+   _display_double_or_nothing() {
         var double_or_nothing = this.duolingo.get_double_or_nothing_status();
         if (double_or_nothing != null) {
             var gicon = Gio.icon_new_for_string(Constants.ICON_FIRE);
